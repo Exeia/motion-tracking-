@@ -1,24 +1,12 @@
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
-
+#include "Motion.h"
 using namespace std;
+using namespace cv;
 int main()
 {
-    char key;
-    printf("Hello world\n");
-    cvNamedWindow("Camera",1);
-    CvCapture * cap = cvCaptureFromCAM(CV_CAP_ANY);
-    while(1){
-        IplImage *frame = cvQueryFrame(cap);
-        cvShowImage("Camera", frame);
-        key = cvWaitKey(10);
-        if(char(key) == 27)
-        {
-            break;
-        }
-    }
-    cvReleaseCapture(&cap);
-    cvDestroyWindow("Camera");
+    Motion* m = new Motion();
+    m->Init();    
     return 0;
 }

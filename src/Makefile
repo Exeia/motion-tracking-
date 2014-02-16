@@ -2,16 +2,16 @@ CFLAG=`pkg-config --cflags opencv`
 LIBS = `pkg-config --libs opencv`
 
 
-##OBJ= Lab_Color.o
+OBJ= Motion.o
 
 
 
-Project2: 
-	g++ $(CFLAG) $(LIBS) -o Project2 Main.cpp  
+Project2: $(OBJ)
+	g++ $(CFLAG) $(LIBS) -o Project2 Main.cpp $(OBJ)
 
 
-##Lab_Color.o: Lab_Color.cpp 
-##	g++ $(CFLAG) $(LIBS) -o $@ -c $^
+Motion.o: Motion.cpp 
+	g++ $(CFLAG) $(LIBS) -o $@ -c $^
    	
 
 clean:
