@@ -2,17 +2,22 @@
 #include <cv.h>
 #include <highgui.h>
 
+#include<opencv2/opencv.hpp>
+using namespace cv;
 class Motion{
 
   public:
       Motion();
-      void Tracking();
+      Motion(char *path);
+      int Tracking(char *p);
       void Detection();
       ~Motion();
-      void Init(); 
-      CvCapture * cap; 
+      int Init(char *p); 
+      CvCapture * cap;
+      Mat frame;
+      char *p;
+      IplImage * track; 
   private:
       bool isHuman();
       bool isCar();
-
 };

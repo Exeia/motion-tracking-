@@ -4,9 +4,9 @@
 #include "Motion.h"
 using namespace std;
 using namespace cv;
-int main()
+int main(int argc, char** arg)
 {
-    Motion* m = new Motion();
-    m->Init();    
+    Motion* m = new Motion(arg[1]);
+    m->Init(arg[1]);    
     return 0;
 }
