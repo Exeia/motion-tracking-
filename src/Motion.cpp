@@ -1,6 +1,7 @@
 #include "Motion.h"
 #include "cv.h"
 #include "highgui.h"
+#include "opencv2/imgproc/imgproc.hpp"
 #include<opencv2/opencv.hpp>
 using namespace std;
 using namespace cv;
@@ -48,6 +49,7 @@ int Motion::Tracking(char *path)
     BackgroundSubtractorMOG2 bg;
     bg.set("nmixtures",3);
     char key;
+    int count = 0;
     bg.set("detectShadows",0);
 // HOGDescriptor h;
     vector<std::vector <Point> > contours;
@@ -63,19 +65,39 @@ int Motion::Tracking(char *path)
        Mat ee = getStructuringElement(MORPH_RECT, Size(3,3));
        Mat de = getStructuringElement(MORPH_RECT, Size(8,8));
 
+       Mat ee2 = getStructuringElement(MORPH_RECT, Size(1,1));
+       Mat de2 = getStructuringElement(MORPH_RECT, Size(5,5));
        bg.operator ()(frame,fore);
-       
+     if (count==0)
+      { 
        bg.getBackgroundImage(back);
+      }
         erode(fore,fore,ee);
         erode(fore,fore,ee);
+        erode(fore,fore,ee2);
         dilate(fore,fore,de);
         dilate(fore,fore,de);
        findContours(fore,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-       vector<Rect> r (contours.size());
-       drawContours(frame,contours,-1,cv::Scalar(0,255,0),2);
+       
+       vector<vector<Point> > poly(contours.size());
+       vector<Rect> ret (contours.size());
+       
+       for(int i =0; i < contours.size();i++)
+       {
+           approxPolyDP(Mat(contours[i]),poly[i], 3, true );
+           ret[i] = boundingRect(Mat(poly[i]));
+
+       }
+
+       for(int i = 0; i <contours.size(); i++)
+       {
+       // drawContours(frame,poly,i ,cv::Scalar(0,255,0),1,8,vector<Vec4i>(),0,Point());
+        rectangle(frame, ret[i].tl(), ret[i].br(), cv::Scalar(0,255,0), 2, 8,0);
+       }
        imshow("Frame",frame);
         imshow("Fore",fore);
          imshow("Back",back);
+         count = 1;
     //    Tracking(h,frame);
     /*double t = (double)getTickCount();
     vector<Rect> f, filtered;
@@ -106,7 +128,6 @@ int Motion::Tracking(char *path)
             cout << "test \n" <<endl;
 		    rectangle(frame, r.tl(), r.br(), Scalar(0,0,255), 3);
     }*/
-   imshow("Frame",frame); 
         key = cvWaitKey(10);
         if(char(key) == 27)
         {
@@ -129,7 +150,8 @@ void Motion::Detection()
     char key;
     bg.setBool("detectShadows",false);
 // HOGDescriptor h;
-    vector<std::vector <Point> > contours;
+    vector<vector <Point> > contours;
+    vector<Vec4i> hier;
 //    h.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
    namedWindow("Frame", 1);
    namedWindow("Fore",1);
@@ -148,9 +170,24 @@ void Motion::Detection()
         erode(fore,fore,ee);
         dilate(fore,fore,de);
         dilate(fore,fore,de);
-        findContours(fore,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-       vector<Rect> r (contours.size());
-       drawContours(frame,contours,-1,cv::Scalar(0,255,0),2);
+       findContours(fore,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
+//       vector<Rect> r (contours.size()); 
+//       vector<vector<Point> > contours_poly (contours.size());
+//       vector<Point2f>center(contours.size());
+//       vector<float> rad(contours.size());
+       for(int i = 0; i < contours.size();i++)
+       {
+           //approxPolyDP(Mat(contours[i]),poly[i], 3.0,true);
+       //     approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+//           r[i] = boundingRect(Mat(contours_poly[i]));
+       }
+       for(int i = 0; i < contours.size(); i++)
+       {
+            //drawContours(frame,contours,-1,cv::Scalar(0,255,0),2);
+       //rectangle( frame, r[i].tl(),r[i].br(), cv::Scalar(0,255,0), 2, 8, 0 );
+
+
+       }
        imshow("Frame",frame);
         imshow("Fore",fore);
          imshow("Back",back);
