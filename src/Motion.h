@@ -9,8 +9,8 @@ class Motion{
   public:
       Motion();
       Motion(char *path);
-      int Tracking(char *p);
-      void Detection();
+      int Detection(char *p);
+      void Tracking();
       ~Motion();
       int Init(char *p); 
       CvCapture * cap;

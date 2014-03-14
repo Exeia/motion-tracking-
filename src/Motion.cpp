@@ -26,22 +26,29 @@ int Motion::Init(char *path)
 
     if(path != NULL)
     {
-        Tracking(path);
+        Detection(path);
     }
     else
     {
-        Detection();
+        Tracking();
     }
     return 0;
 }
 
-int Motion::Tracking(char *path)
+int Motion::Detection(char *path)
 {
 
     Mat frame;
     Mat back;
     Mat fore;
-        VideoCapture c(path);
+    Mat tracking, img, prev;
+    //VideoCapture("./mv2_004/mv2_004.avi");
+    VideoCapture c(path);
+    Point2f pt;
+    double width, height;
+    TermCriteria term(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03);
+    vector<Point2f> points[2];
+    bool init = true; 
      if (!c.isOpened()) {
          cout << "Cannot open file" << endl;
          return -1;
@@ -51,34 +58,59 @@ int Motion::Tracking(char *path)
     char key;
     int count = 0;
     bg.set("detectShadows",0);
-// HOGDescriptor h;
     vector<std::vector <Point> > contours;
-//    h.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
    namedWindow("Frame", 1);
    namedWindow("Fore",1);
    namedWindow("Back",1);
+    width = c.get(CV_CAP_PROP_FRAME_WIDTH);
+    height = c.get(CV_CAP_PROP_FRAME_HEIGHT);
+    VideoWriter v1("track_and_detect.avi", CV_FOURCC('P','I','M','1'),20  ,Size((int)width,(int)height), true);
+    VideoWriter v2("test_fore.avi", CV_FOURCC('M','J','P','G'),20  ,Size((int)width,(int)height), true);
+    VideoWriter v3("track_optical_flow.avi", CV_FOURCC('P','I','M','1'),20  ,Size((int)width,(int)height), true);
+    if(!v1.isOpened())
+    {
+         cout << "Cannot open1 file" << endl;
+         return -1;
+    }
+    if(!v2.isOpened())
+    {
+         cout << "Cannot open2 file" << endl;
+         return -1;
+    }
+    if(!v3.isOpened())
+    {
+         cout << "Cannot open3 file" << endl;
+         return -1;
+    }
     while(true)
     {
           /* code */
         bool isRun = c.read(frame);
-
+        if(!isRun)
+        {
+            cout << "Reading is broken"<<endl;
+            break;
+        }
        Mat ee = getStructuringElement(MORPH_RECT, Size(3,3));
        Mat de = getStructuringElement(MORPH_RECT, Size(8,8));
 
        Mat ee2 = getStructuringElement(MORPH_RECT, Size(1,1));
        Mat de2 = getStructuringElement(MORPH_RECT, Size(5,5));
        bg.operator ()(frame,fore);
-     if (count==0)
+
+       
+      if (count==0)
       { 
        bg.getBackgroundImage(back);
       }
-        erode(fore,fore,ee);
-        erode(fore,fore,ee);
-        erode(fore,fore,ee2);
-        dilate(fore,fore,de);
-        dilate(fore,fore,de);
+       erode(fore,fore,ee);
+       erode(fore,fore,ee);
+
+       erode(fore,fore,ee2);
+       dilate(fore,fore,de);
+       dilate(fore,fore,de);
        findContours(fore,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-       
+      Tracking(); 
        vector<vector<Point> > poly(contours.size());
        vector<Rect> ret (contours.size());
        
@@ -91,148 +123,80 @@ int Motion::Tracking(char *path)
 
        for(int i = 0; i <contours.size(); i++)
        {
-       // drawContours(frame,poly,i ,cv::Scalar(0,255,0),1,8,vector<Vec4i>(),0,Point());
         rectangle(frame, ret[i].tl(), ret[i].br(), cv::Scalar(0,255,0), 2, 8,0);
        }
-       imshow("Frame",frame);
-        imshow("Fore",fore);
-         imshow("Back",back);
-         count = 1;
-    //    Tracking(h,frame);
-    /*double t = (double)getTickCount();
-    vector<Rect> f, filtered;
-    h.detectMultiScale(frame, f, 0, Size(8,8), Size(32,32), 1.05, 1);
+       frame.copyTo(tracking);
+       cvtColor(tracking,img, COLOR_BGR2GRAY);
+       if(init)
+       {
+           goodFeaturesToTrack(img,points[1],500,0.01,10,Mat(),3,0,0.04);
+           cornerSubPix(img,points[1],Size(10,10), Size(-1,1), term);
 
-    size_t j, i ;
-    for (i = 0; i < f.size(); i++) {
-        Rect ret = f[i];
-        for ( j = 0; i < f.size(); i++) {
-            if (j != i && (ret & f[j])==ret) {
-                break;
+       }
+       else if(!points[0].empty())
+       {
+                   vector<uchar> status;
+                   vector<float> err;
+                   if (prev.empty()) {
+                        img.copyTo(prev);
+                   }
+                   calcOpticalFlowPyrLK(prev,img,points[0],points[1],status,err,
+                           Size(10,10),3,term,0,0.001);
+                   size_t i,k;
+                   for (i=k = 0; i < points[1].size(); i++) {
+                       /* code */
+                        if(!status[i])
+                            continue;
+                        points[1][k++] = points[1][i];
+                        circle(tracking,points[1][i],3, Scalar(255,0,0),-1,8);
+                        
+                   }
+                   points[1].resize(k);
+
            }
+       //init = false;
 
-        }
-        if (j == f.size()) {
 
-              cout << "Test 12"<< endl;
-              filtered.push_back(ret);
-        }
-    }
-    for (int i = 0; i < filtered.size(); i++) {
-
-         Rect r = filtered[i];
-            r.x += cvRound(r.width*0.1);
-		    r.width = cvRound(r.width*0.8);
-		    r.y += cvRound(r.height*0.07);
-		    r.height = cvRound(r.height*0.8);
-            cout << "test \n" <<endl;
-		    rectangle(frame, r.tl(), r.br(), Scalar(0,0,255), 3);
-    }*/
+      imshow("Frame",frame);
+      imshow("Fore",fore);
+      imshow("Back",tracking);
+         count = 1;
         key = cvWaitKey(10);
         if(char(key) == 27)
         {
             break;
         }
+        switch(key)
+        {
+            case 'r':
+                init= true;
+                break;
+            case 'c':
+                points[0].clear();
+                points[1].clear();
+                break;
+            case'e':
+                init = false;
+                break;
+        } 
+        std::swap(points[1],points[0]);
+        cv::swap(prev,img);
 
+         v1.write(frame);
+         v2.write(fore);
+         v3.write(tracking);
     }
     return 0; 
 }
 
-void Motion::Detection()
+void Motion::Tracking()
 {
-    Mat frame;
-    Mat back;
-    Mat fore;
-        VideoCapture c(1);
-
-    BackgroundSubtractorMOG2 bg;
-    bg.set("nmixtures",3);
-    char key;
-    bg.setBool("detectShadows",false);
-// HOGDescriptor h;
-    vector<vector <Point> > contours;
-    vector<Vec4i> hier;
-//    h.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
-   namedWindow("Frame", 1);
-   namedWindow("Fore",1);
-   namedWindow("Back",1);
-    while(true)
-    {
-          /* code */
-       c >> frame;
-       Mat ee = getStructuringElement(MORPH_RECT, Size(3,3));
-       Mat de = getStructuringElement(MORPH_RECT, Size(8,8));
-
-       bg.operator ()(frame,fore);
-       
-       bg.getBackgroundImage(back);
-        erode(fore,fore,ee);
-        erode(fore,fore,ee);
-        dilate(fore,fore,de);
-        dilate(fore,fore,de);
-       findContours(fore,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-//       vector<Rect> r (contours.size()); 
-//       vector<vector<Point> > contours_poly (contours.size());
-//       vector<Point2f>center(contours.size());
-//       vector<float> rad(contours.size());
-       for(int i = 0; i < contours.size();i++)
-       {
-           //approxPolyDP(Mat(contours[i]),poly[i], 3.0,true);
-       //     approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
-//           r[i] = boundingRect(Mat(contours_poly[i]));
-       }
-       for(int i = 0; i < contours.size(); i++)
-       {
-            //drawContours(frame,contours,-1,cv::Scalar(0,255,0),2);
-       //rectangle( frame, r[i].tl(),r[i].br(), cv::Scalar(0,255,0), 2, 8, 0 );
-
-
-       }
-       imshow("Frame",frame);
-        imshow("Fore",fore);
-         imshow("Back",back);
-    //    Tracking(h,frame);
-    /*double t = (double)getTickCount();
-    vector<Rect> f, filtered;
-    h.detectMultiScale(frame, f, 0, Size(8,8), Size(32,32), 1.05, 1);
-
-    size_t j, i ;
-    for (i = 0; i < f.size(); i++) {
-        Rect ret = f[i];
-        for ( j = 0; i < f.size(); i++) {
-            if (j != i && (ret & f[j])==ret) {
-                break;
-           }
-
-        }
-        if (j == f.size()) {
-
-              cout << "Test 12"<< endl;
-              filtered.push_back(ret);
-        }
-    }
-    for (int i = 0; i < filtered.size(); i++) {
-
-         Rect r = filtered[i];
-            r.x += cvRound(r.width*0.1);
-		    r.width = cvRound(r.width*0.8);
-		    r.y += cvRound(r.height*0.07);
-		    r.height = cvRound(r.height*0.8);
-            cout << "test \n" <<endl;
-		    rectangle(frame, r.tl(), r.br(), Scalar(0,0,255), 3);
-    }*/
-   imshow("Frame",frame); 
-        key = cvWaitKey(10);
-        if(char(key) == 27)
-        {
-            break;
-        }
-
-    }
 }
 
 bool Motion::isHuman()
 {
+
+    
     return false;
 }
 
